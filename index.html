@@ -249,16 +249,27 @@
   }
 
   .tray-slot:hover:not(.used) {
-    border-color: var(--accent);
+    border-color: var(--p1);
     background: rgba(110,200,122,0.06);
+  }
+
+  .tray.p2-turn .tray-slot:hover:not(.used) {
+    border-color: var(--p2);
+    background: rgba(126,184,200,0.06);
   }
 
   .tray-slot.used { opacity: 0.15; cursor: default; pointer-events: none; }
 
   .tray-slot.selected {
-    border-color: var(--accent) !important;
+    border-color: var(--p1) !important;
     background: rgba(110,200,122,0.12) !important;
     box-shadow: 0 0 12px rgba(110,200,122,0.3);
+  }
+
+  .tray.p2-turn .tray-slot.selected {
+    border-color: var(--p2) !important;
+    background: rgba(126,184,200,0.12) !important;
+    box-shadow: 0 0 12px rgba(126,184,200,0.3);
   }
 
   .tray-slot .piece-svg { width: 36px; height: 36px; }
@@ -574,6 +585,7 @@ function renderBoard() {
 function renderTray() {
   const trayEl = document.getElementById('tray');
   trayEl.innerHTML = '';
+  trayEl.className = 'tray' + (currentPlayer === 2 ? ' p2-turn' : '');
   for (let i = 0; i < 16; i++) {
     const slot = document.createElement('div');
     slot.className = 'tray-slot' + (used[i] ? ' used' : '');
