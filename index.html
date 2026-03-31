@@ -325,7 +325,7 @@
     content: '';
     position: absolute;
     inset: -1px;
-    border: 1px solid var(--win);
+    border: 1px solid var(--win-color, var(--win));
     pointer-events: none;
   }
 
@@ -333,7 +333,7 @@
     font-family: 'Bebas Neue', sans-serif;
     font-size: 64px;
     letter-spacing: 0.1em;
-    color: var(--win);
+    color: var(--win-color, var(--win));
     line-height: 1;
   }
 
@@ -517,6 +517,7 @@ function initGame() {
   currentPlayer = 1;
   gameOver = false;
   document.getElementById('winOverlay').classList.remove('show');
+  document.querySelector('.win-box').style.removeProperty('--win-color');
   render();
 }
 
@@ -741,23 +742,25 @@ function getWinCells() {
 }
 
 function showWin(line) {
-  // Who placed last? We switched back to give phase logic, so the placing player is
-  // the one who just placed — that's currentPlayer (already advanced by selectPiece).
-  // Actually the placer is the player BEFORE the current. Let's track separately.
-  const winner = currentPlayer; // after placing, currentPlayer is still the placer (no switch on place)
+  const winner = currentPlayer;
+  const color = winner === 1 ? 'var(--p1)' : 'var(--p2)';
   const overlay = document.getElementById('winOverlay');
+  const box = overlay.querySelector('.win-box');
+  box.style.setProperty('--win-color', color);
   document.getElementById('winTitle').textContent = 'QUARTO!';
-  document.getElementById('winTitle').style.color = 'var(--win)';
   document.getElementById('winPlayer').textContent = `Player ${winner} wins`;
+  document.getElementById('winPlayer').style.color = color;
   document.getElementById('winReason').textContent = 'Four in a row — shared attribute';
   overlay.classList.add('show');
 }
 
 function showDraw() {
   const overlay = document.getElementById('winOverlay');
+  const box = overlay.querySelector('.win-box');
+  box.style.setProperty('--win-color', 'var(--accent)');
   document.getElementById('winTitle').textContent = 'DRAW';
-  document.getElementById('winTitle').style.color = 'var(--accent)';
   document.getElementById('winPlayer').textContent = 'All 16 pieces placed';
+  document.getElementById('winPlayer').style.color = '';
   document.getElementById('winReason').textContent = 'No winning line found';
   overlay.classList.add('show');
 }
