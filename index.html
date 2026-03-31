@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QUARTO</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e0e;
+    --panel: #161616;
+    --border: #2a2a2a;
+    --accent: #6ec87a;
+    --accent2: #7eb8c8;
+    --p1: #6ec87a;
+    --p2: #7eb8c8;
+    --text: #e8e4dc;
+    --muted: #666;
+    --cell: #1c1c1c;
+    --cell-hover: #242424;
+    --piece-dark: #1a1a1a;
+    --piece-light: #d4c9a8;
+    --win: #4caf50;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 20%, rgba(110,200,122,0.04) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(126,184,200,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(48px, 8vw, 80px);
+    letter-spacing: 0.15em;
+    background: linear-gradient(135deg, var(--p1) 0%, var(--p2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+
+  .subtitle {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .game-wrap {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    max-width: 900px;
+  }
+
+  /* STATUS BAR */
+  .status-bar {
+    width: 100%;
+    max-width: 900px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 14px 20px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .status-bar::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--accent);
+    transition: background 0.3s;
+  }
+
+  .status-bar.p2::before { background: var(--accent2); }
+  .status-bar.win-state::before { background: var(--win); }
+
+  .player-badge {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.1em;
+    padding: 4px 12px;
+    border: 1px solid currentColor;
+  }
+
+  .player-badge.p1 { color: var(--p1); }
+  .player-badge.p2 { color: var(--p2); }
+
+  .status-text {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .phase-indicator {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+  }
+
+  /* BOARD */
+  .board-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    position: relative;
+  }
+
+  .board-label {
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  .cell {
+    width: 76px;
+    height: 76px;
+    background: var(--cell);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .cell:hover:not(.occupied) {
+    background: var(--cell-hover);
+    border-color: var(--p1);
+  }
+
+  .board.p2-turn .cell:hover:not(.occupied) {
+    border-color: var(--p2);
+  }
+
+  .cell.occupied { cursor: default; }
+
+  .cell.win-cell {
+    border-color: var(--win) !important;
+    background: rgba(76,175,80,0.08) !important;
+  }
+
+  .cell.win-cell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--win);
+    animation: winPulse 1s ease-in-out infinite alternate;
+  }
+
+  @keyframes winPulse {
+    from { opacity: 0.3; }
+    to { opacity: 1; }
+  }
+
+  /* PIECE SVG */
+  .piece-svg {
+    width: 52px;
+    height: 52px;
+    pointer-events: none;
+    transition: transform 0.2s;
+  }
+
+  /* PIECE TRAY */
+  .tray-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+    min-width: 220px;
+    max-width: 280px;
+  }
+
+  .tray-label {
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .tray {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 12px;
+  }
+
+  .tray-slot {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .tray-slot:hover:not(.used) {
+    border-color: var(--accent);
+    background: rgba(110,200,122,0.06);
+  }
+
+  .tray-slot.used { opacity: 0.15; cursor: default; pointer-events: none; }
+
+  .tray-slot.selected {
+    border-color: var(--accent) !important;
+    background: rgba(110,200,122,0.12) !important;
+    box-shadow: 0 0 12px rgba(110,200,122,0.3);
+  }
+
+  .tray-slot .piece-svg { width: 36px; height: 36px; }
+
+  /* SELECTED PIECE DISPLAY */
+  .selected-piece-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .selected-piece-panel .piece-svg { width: 60px; height: 60px; }
+
+  .piece-attrs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+  }
+
+  .attr-tag {
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  /* WIN OVERLAY */
+  .win-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+  }
+
+  .win-overlay.show {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .win-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 40px 60px;
+    text-align: center;
+    position: relative;
+    max-width: 400px;
+    width: 90%;
+  }
+
+  .win-box::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 1px solid var(--win);
+    pointer-events: none;
+  }
+
+  .win-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    letter-spacing: 0.1em;
+    color: var(--win);
+    line-height: 1;
+  }
+
+  .win-player {
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: var(--text);
+    margin: 8px 0 4px;
+    text-transform: uppercase;
+  }
+
+  .win-reason {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  .btn-restart {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 10px 28px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-restart:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  /* DRAW */
+  .draw-title { color: var(--accent); }
+
+  /* LEGEND */
+  .legend {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .legend-piece { width: 28px; height: 28px; }
+
+  @media (max-width: 600px) {
+    .cell { width: 60px; height: 60px; }
+    .piece-svg { width: 42px; height: 42px; }
+    .tray-slot { width: 40px; height: 40px; }
+    .tray-slot .piece-svg { width: 28px; height: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>QUARTO</h1>
+  <p class="subtitle">The game of four — two players, one board</p>
+</header>
+
+<div class="status-bar" id="statusBar">
+  <span class="player-badge p1" id="playerBadge">P1</span>
+  <span class="status-text" id="statusText">Select a piece to give your opponent</span>
+  <span class="phase-indicator" id="phaseIndicator">GIVE PHASE</span>
+</div>
+
+<div class="game-wrap">
+  <!-- BOARD -->
+  <div class="board-section">
+    <div class="board-label">Board</div>
+    <div class="board" id="board"></div>
+  </div>
+
+  <!-- TRAY & SELECTED -->
+  <div class="tray-section">
+    <div class="tray-label">Available Pieces</div>
+    <div class="tray" id="tray"></div>
+
+    <div class="selected-piece-panel" id="selectedPanel" style="display:none">
+      <div class="tray-label">Selected for opponent</div>
+      <svg class="piece-svg" id="selectedSvg" viewBox="0 0 52 52"></svg>
+      <div class="piece-attrs" id="selectedAttrs"></div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item">
+    <svg class="legend-piece" viewBox="0 0 36 36"><rect x="6" y="6" width="24" height="24" rx="0" fill="#1a1a1a" stroke="#d4c9a8" stroke-width="1.5"/></svg>
+    Dark Square
+  </div>
+  <div class="legend-item">
+    <svg class="legend-piece" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="#1a1a1a" stroke="#d4c9a8" stroke-width="1.5"/></svg>
+    Dark Round
+  </div>
+  <div class="legend-item">
+    <svg class="legend-piece" viewBox="0 0 36 36"><rect x="6" y="6" width="24" height="24" rx="0" fill="#d4c9a8" stroke="#888" stroke-width="1"/></svg>
+    Light Square
+  </div>
+  <div class="legend-item">
+    <svg class="legend-piece" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="#d4c9a8" stroke="#888" stroke-width="1"/></svg>
+    Light Round
+  </div>
+  <div class="legend-item">
+    <svg class="legend-piece" viewBox="0 0 36 36"><rect x="6" y="6" width="24" height="24" rx="0" fill="#1a1a1a" stroke="#d4c9a8" stroke-width="1.5"/><rect x="12" y="12" width="12" height="12" rx="0" fill="none" stroke="#d4c9a8" stroke-width="1"/></svg>
+    Hollow
+  </div>
+  <div class="legend-item">
+    <svg class="legend-piece" viewBox="0 0 36 36"><rect x="6" y="6" width="24" height="24" rx="0" fill="#d4c9a8" stroke="#888" stroke-width="1"/><rect x="12" y="12" width="12" height="12" rx="0" fill="#888"/></svg>
+    Solid
+  </div>
+  <div class="legend-item">
+    <svg class="legend-piece" viewBox="0 0 36 36"><rect x="4" y="4" width="28" height="28" fill="#1a1a1a" stroke="#d4c9a8" stroke-width="1.5"/></svg>
+    Big
+  </div>
+  <div class="legend-item">
+    <svg class="legend-piece" viewBox="0 0 36 36"><rect x="11" y="11" width="14" height="14" fill="#1a1a1a" stroke="#d4c9a8" stroke-width="1.5"/></svg>
+    Small
+  </div>
+</div>
+
+<!-- WIN OVERLAY -->
+<div class="win-overlay" id="winOverlay">
+  <div class="win-box">
+    <div class="win-title" id="winTitle">WIN!</div>
+    <div class="win-player" id="winPlayer">Player 1 wins</div>
+    <div class="win-reason" id="winReason">Four in a row — same attribute</div>
+    <button class="btn-restart" onclick="initGame()">Play Again</button>
+  </div>
+</div>
+
+<script>
+// ── PIECE DEFINITIONS ──────────────────────────────────────────────
+// Each piece: [dark(0)/light(1), round(0)/square(1), big(0)/small(1), hollow(0)/solid(1)]
+const PIECES = [];
+for (let d = 0; d < 2; d++)
+  for (let r = 0; r < 2; r++)
+    for (let s = 0; s < 2; s++)
+      for (let h = 0; h < 2; h++)
+        PIECES.push([d, r, s, h]);
+
+const ATTR_NAMES = [
+  ['Dark','Light'],
+  ['Round','Square'],
+  ['Big','Small'],
+  ['Hollow','Solid']
+];
+
+// ── GAME STATE ──────────────────────────────────────────────────────
+let board, used, selected, phase, currentPlayer, gameOver;
+
+// phase: 'give' = current player picks piece for opponent
+//        'place' = current player places the given piece
+
+function initGame() {
+  board = Array(16).fill(null);      // piece index or null
+  used = Array(16).fill(false);
+  selected = null;
+  phase = 'give';
+  currentPlayer = 1;
+  gameOver = false;
+  document.getElementById('winOverlay').classList.remove('show');
+  render();
+}
+
+// ── RENDER ──────────────────────────────────────────────────────────
+function render() {
+  renderStatus();
+  renderBoard();
+  renderTray();
+  renderSelectedPanel();
+}
+
+function renderStatus() {
+  const bar = document.getElementById('statusBar');
+  const badge = document.getElementById('playerBadge');
+  const txt = document.getElementById('statusText');
+  const phase_ind = document.getElementById('phaseIndicator');
+
+  bar.className = 'status-bar' + (currentPlayer === 2 ? ' p2' : '');
+  badge.className = 'player-badge ' + (currentPlayer === 1 ? 'p1' : 'p2');
+  badge.textContent = 'P' + currentPlayer;
+
+  if (phase === 'give') {
+    txt.textContent = `Player ${currentPlayer}: pick a piece to give your opponent`;
+    phase_ind.textContent = 'GIVE PHASE';
+  } else {
+    const other = currentPlayer === 1 ? 2 : 1;
+    txt.textContent = `Player ${currentPlayer}: place the piece on the board`;
+    phase_ind.textContent = 'PLACE PHASE';
+  }
+}
+
+function renderBoard() {
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+  boardEl.className = 'board' + (phase === 'place' && currentPlayer === 2 ? ' p2-turn' : '');
+  const wins = getWinCells();
+  for (let i = 0; i < 16; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell' + (board[i] !== null ? ' occupied' : '');
+    if (wins.has(i)) cell.classList.add('win-cell');
+
+    if (board[i] !== null) {
+      const svg = makePieceSVG(board[i], 52);
+      cell.appendChild(svg);
+    }
+
+    if (board[i] === null && phase === 'place' && !gameOver) {
+      cell.addEventListener('click', () => placeOnBoard(i));
+    }
+    boardEl.appendChild(cell);
+  }
+}
+
+function renderTray() {
+  const trayEl = document.getElementById('tray');
+  trayEl.innerHTML = '';
+  for (let i = 0; i < 16; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'tray-slot' + (used[i] ? ' used' : '');
+    if (selected === i) slot.classList.add('selected');
+
+    const svg = makePieceSVG(i, 36);
+    slot.appendChild(svg);
+
+    if (!used[i] && phase === 'give' && !gameOver) {
+      slot.addEventListener('click', () => selectPiece(i));
+    }
+    trayEl.appendChild(slot);
+  }
+}
+
+function renderSelectedPanel() {
+  const panel = document.getElementById('selectedPanel');
+  if (selected === null || phase !== 'place') {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'flex';
+  const svgEl = document.getElementById('selectedSvg');
+  svgEl.innerHTML = '';
+  const svg = makePieceSVG(selected, 52);
+  while (svg.firstChild) svgEl.appendChild(svg.firstChild);
+  svgEl.setAttribute('viewBox', svg.getAttribute('viewBox'));
+
+  const attrs = document.getElementById('selectedAttrs');
+  attrs.innerHTML = '';
+  PIECES[selected].forEach((v, i) => {
+    const tag = document.createElement('span');
+    tag.className = 'attr-tag';
+    tag.textContent = ATTR_NAMES[i][v];
+    attrs.appendChild(tag);
+  });
+}
+
+// ── PIECE SVG BUILDER ────────────────────────────────────────────────
+function makePieceSVG(idx, size) {
+  const [dark, round, big, hollow] = PIECES[idx];
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+  svg.setAttribute('width', size);
+  svg.setAttribute('height', size);
+  svg.classList.add('piece-svg');
+
+  const fill = dark ? '#2a2420' : '#d4c9a8';
+  const stroke = dark ? '#c8a96e' : '#8a7a5a';
+  const strokeW = size < 40 ? 1.2 : 1.5;
+
+  // Big = large uniform size, Small = smaller uniform size, both centred
+  const scale = big ? 0.78 : 0.46;
+  const dim = size * scale;
+  const cx = size / 2;
+  const cy = size / 2;
+
+  let shape;
+  if (round) {
+    shape = document.createElementNS(ns, 'circle');
+    shape.setAttribute('cx', cx);
+    shape.setAttribute('cy', cy);
+    shape.setAttribute('r', dim / 2);
+  } else {
+    shape = document.createElementNS(ns, 'rect');
+    shape.setAttribute('x', cx - dim / 2);
+    shape.setAttribute('y', cy - dim / 2);
+    shape.setAttribute('width', dim);
+    shape.setAttribute('height', dim);
+  }
+  shape.setAttribute('fill', fill);
+  shape.setAttribute('stroke', stroke);
+  shape.setAttribute('stroke-width', strokeW);
+  svg.appendChild(shape);
+
+  // Hollow: inner cutout
+  if (hollow) {
+    const hFactor = 0.42;
+    let inner;
+    if (round) {
+      inner = document.createElementNS(ns, 'circle');
+      inner.setAttribute('cx', cx);
+      inner.setAttribute('cy', cy);
+      inner.setAttribute('r', (dim / 2) * hFactor);
+    } else {
+      const iw = dim * hFactor;
+      inner = document.createElementNS(ns, 'rect');
+      inner.setAttribute('x', cx - iw / 2);
+      inner.setAttribute('y', cy - iw / 2);
+      inner.setAttribute('width', iw);
+      inner.setAttribute('height', iw);
+    }
+    inner.setAttribute('fill', dark ? '#0e0e0e' : '#b0a07a');
+    inner.setAttribute('stroke', stroke);
+    inner.setAttribute('stroke-width', strokeW * 0.7);
+    svg.appendChild(inner);
+  }
+
+  return svg;
+}
+
+// ── ACTIONS ──────────────────────────────────────────────────────────
+function selectPiece(idx) {
+  if (phase !== 'give' || used[idx] || gameOver) return;
+  selected = idx;
+  phase = 'place';
+  // switch player
+  currentPlayer = currentPlayer === 1 ? 2 : 1;
+  render();
+}
+
+function placeOnBoard(cellIdx) {
+  if (phase !== 'place' || board[cellIdx] !== null || selected === null || gameOver) return;
+  board[cellIdx] = selected;
+  used[selected] = true;
+  const placed = selected;
+  selected = null;
+
+  // Check win
+  const winLine = checkWin();
+  if (winLine) {
+    gameOver = true;
+    render();
+    showWin(winLine);
+    return;
+  }
+
+  // Check draw
+  if (used.every(u => u)) {
+    gameOver = true;
+    render();
+    showDraw();
+    return;
+  }
+
+  phase = 'give';
+  // player stays the same — they now give a piece
+  render();
+}
+
+// ── WIN DETECTION ────────────────────────────────────────────────────
+const LINES = [
+  [0,1,2,3],[4,5,6,7],[8,9,10,11],[12,13,14,15],   // rows
+  [0,4,8,12],[1,5,9,13],[2,6,10,14],[3,7,11,15],   // cols
+  [0,5,10,15],[3,6,9,12]                            // diags
+];
+
+function checkWin() {
+  for (const line of LINES) {
+    if (line.every(i => board[i] !== null)) {
+      // Check each attribute
+      for (let attr = 0; attr < 4; attr++) {
+        const vals = line.map(i => PIECES[board[i]][attr]);
+        if (vals.every(v => v === vals[0])) return line;
+      }
+    }
+  }
+  return null;
+}
+
+function getWinCells() {
+  if (!gameOver) return new Set();
+  const line = checkWin();
+  return line ? new Set(line) : new Set();
+}
+
+function showWin(line) {
+  // Who placed last? We switched back to give phase logic, so the placing player is
+  // the one who just placed — that's currentPlayer (already advanced by selectPiece).
+  // Actually the placer is the player BEFORE the current. Let's track separately.
+  const winner = currentPlayer; // after placing, currentPlayer is still the placer (no switch on place)
+  const overlay = document.getElementById('winOverlay');
+  document.getElementById('winTitle').textContent = 'QUARTO!';
+  document.getElementById('winTitle').style.color = 'var(--win)';
+  document.getElementById('winPlayer').textContent = `Player ${winner} wins`;
+  document.getElementById('winReason').textContent = 'Four in a row — shared attribute';
+  overlay.classList.add('show');
+}
+
+function showDraw() {
+  const overlay = document.getElementById('winOverlay');
+  document.getElementById('winTitle').textContent = 'DRAW';
+  document.getElementById('winTitle').style.color = 'var(--accent)';
+  document.getElementById('winPlayer').textContent = 'All 16 pieces placed';
+  document.getElementById('winReason').textContent = 'No winning line found';
+  overlay.classList.add('show');
+}
+
+// ── BOOT ─────────────────────────────────────────────────────────────
+initGame();
+</script>
+</body>
+</html>
